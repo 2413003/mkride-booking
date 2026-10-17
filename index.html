@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request a trip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000; --muted:#5e5e5e; --field:#f3f3f3; --field-hover:#e8e8e8;
+    --pill:#eee; --line:#d9d9d9; --bg:#fff; --err:#b3261e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Sora',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .app{max-width:520px;margin:0 auto;padding:28px 20px 56px}
+  .city{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+  h1{font-size:clamp(34px,9vw,48px);line-height:1.05;letter-spacing:-.02em;margin:18px 0 22px;font-weight:700}
+  h2{font-size:20px;margin:0 0 14px;font-weight:700;letter-spacing:-.01em}
+
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:0;background:var(--pill);color:var(--ink);
+    font:600 14px 'Sora',sans-serif;padding:11px 16px;border-radius:999px;cursor:pointer;transition:background .15s}
+  .pill:hover{background:#e2e2e2}
+  .pill[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+  .label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:16px 0 6px}
+  .stack{position:relative}
+  .row{position:relative;display:flex;align-items:center;background:var(--field);border-radius:10px;margin-bottom:10px;transition:background .15s}
+  .row:focus-within{background:var(--field-hover);box-shadow:inset 0 0 0 2px var(--ink)}
+  .row input,.row select,.row textarea{flex:1;min-width:0;border:0;background:transparent;outline:0;
+    font:500 15px 'Sora',sans-serif;color:var(--ink);padding:18px 14px 18px 0}
+  .row input::placeholder,.row textarea::placeholder{color:#6b6b6b}
+  .row.plain input,.row.plain select,.row.plain textarea{padding:15px 14px}
+  .row textarea{resize:vertical;min-height:72px}
+  .ico{flex:0 0 44px;display:flex;justify-content:center}
+  .ico i{display:block;width:16px;height:16px}
+  .dot{border:4px solid #000;border-radius:50%;background:#fff;box-shadow:0 0 0 0 #000;width:18px!important;height:18px!important;position:relative}
+  .dot::after{content:"";position:absolute;inset:2px;background:#000;border-radius:50%}
+  .sq{width:16px!important;height:16px!important;background:#000;position:relative}
+  .sq::after{content:"";position:absolute;inset:5px;background:#fff}
+  .link-line{position:absolute;left:21.5px;top:42px;height:38px;width:1.5px;background:#000;z-index:2;pointer-events:none}
+  .geo{flex:0 0 auto;border:0;background:transparent;cursor:pointer;padding:10px 14px;display:flex}
+  .geo:hover svg{transform:scale(1.1)}
+
+  ul.sugg{position:absolute;left:0;right:0;top:100%;z-index:20;margin:4px 0 0;padding:6px;list-style:none;background:#fff;
+    border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);max-height:260px;overflow:auto}
+  ul.sugg li{display:flex;align-items:center;gap:14px;padding:11px 12px;border-radius:8px;cursor:pointer;line-height:1.3}
+  ul.sugg li:hover,ul.sugg li.act{background:var(--field)}
+  ul.sugg .si{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center}
+  ul.sugg li.act .si{background:#000}
+  ul.sugg .si svg{width:18px;height:18px;fill:#000}
+  ul.sugg li.act .si svg{fill:#fff}
+  ul.sugg li.state{color:var(--muted);font-size:14px;cursor:default;padding:14px 12px}
+  ul.sugg li.state:hover{background:transparent}
+  ul.sugg .tx{min-width:0}
+  ul.sugg .tx b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  ul.sugg .tx span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+  ul.sugg li.act .tx span{color:var(--muted)}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .two .row{margin-bottom:0}
+  .days{display:flex;gap:6px;flex-wrap:wrap}
+  .day{width:46px;height:46px;border-radius:50%;border:0;background:var(--pill);font:600 13px 'Sora',sans-serif;cursor:pointer}
+  .day[aria-pressed="true"]{background:#000;color:#fff}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:#000;color:#fff;
+    font:600 16px 'Sora',sans-serif;padding:16px 26px;border-radius:10px;cursor:pointer;margin-top:18px;transition:opacity .15s}
+  .btn:hover{opacity:.85}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.block{width:100%}
+  .btn.ghost{background:var(--pill);color:#000}
+  .msg{margin-top:14px;font-size:14px;color:var(--err);font-weight:500}
+  .msg.ok{color:#0a7a3d}
+
+  .result{margin-top:30px;border-top:1px solid var(--line);padding-top:26px}
+  .price{font-size:clamp(44px,12vw,60px);font-weight:700;letter-spacing:-.03em;line-height:1}
+  .sub{color:var(--muted);font-size:14px;margin-top:8px;line-height:1.5}
+  .run{margin-top:22px;background:var(--field);border-radius:12px;padding:16px 16px 6px}
+  .run h3{margin:0 0 4px;font-size:15px;display:flex;justify-content:space-between;gap:10px}
+  .leg{display:flex;justify-content:space-between;gap:12px;font-size:13.5px;padding:9px 0;border-top:1px solid #e1e1e1}
+  .leg:first-of-type{border-top:0}
+  .leg span:first-child{color:var(--muted)}
+  .leg.tot{font-weight:600}
+  .leg.tot span:first-child{color:#000}
+  .fine{font-size:12px;color:var(--muted);line-height:1.5;margin-top:14px}
+  .hidden{display:none!important}
+  .spin{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="city">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+    <span>Milton Keynes, GB</span>
+  </div>
+
+  <h1>Request a trip</h1>
+
+  <!-- ===== SEARCH / QUOTE SECTION ===== -->
+  <section id="search">
+    <div class="pills" id="servicePills">
+      <button class="pill" data-service="taxi" aria-pressed="true">Taxi</button>
+      <button class="pill" data-service="school" aria-pressed="false">School run</button>
+    </div>
+    <div class="pills" id="freqPills">
+      <button class="pill" data-freq="once" aria-pressed="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 5v5.4l4 2.3-.8 1.3-4.7-2.7V7H13Z"/></svg>
+        One-off
+      </button>
+      <button class="pill" data-freq="recurring" aria-pressed="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.7 6.3A8 8 0 0 0 4 12H2l3.5 3.5L9 12H6a6 6 0 0 1 10.3-4.2L17.7 6.3ZM18.5 8.5 15 12h3a6 6 0 0 1-10.3 4.2l-1.4 1.5A8 8 0 0 0 20 12h2l-3.5-3.5Z"/></svg>
+        Recurring
+      </button>
+    </div>
+    <div class="pills hidden" id="modePills">
+      <button class="pill" data-mode="am" aria-pressed="true">Morning drop-off</button>
+      <button class="pill" data-mode="pm" aria-pressed="false">Afternoon pick-up</button>
+      <button class="pill" data-mode="both" aria-pressed="false">Both</button>
+    </div>
+
+    <div class="stack" style="margin-top:6px">
+      <div class="link-line"></div>
+
+      <div style="position:relative">
+        <div class="row">
+          <div class="ico"><i class="dot"></i></div>
+          <input id="fromInput" type="text" autocomplete="off" placeholder="Pick-up location" aria-label="Pick-up location">
+          <button class="geo" id="geoBtn" type="button" title="Use my location" aria-label="Use my location">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg>
+          </button>
+        </div>
+        <ul class="sugg hidden" id="fromList"></ul>
+      </div>
+
+      <div style="position:relative">
+        <div class="row">
+          <div class="ico"><i class="sq"></i></div>
+          <input id="toInput" type="text" autocomplete="off" placeholder="Drop-off location" aria-label="Drop-off location">
+        </div>
+        <ul class="sugg hidden" id="toList"></ul>
+      </div>
+    </div>
+
+    <div class="msg hidden" id="geoMsg" role="alert" style="margin:2px 0 0"></div>
+
+    <!-- one-off schedule -->
+    <div id="onceBox">
+      <label class="label" for="date">Date</label>
+      <div class="row plain"><input type="date" id="date"></div>
+    </div>
+
+    <!-- recurring schedule -->
+    <div id="recurBox" class="hidden">
+      <label class="label">Repeat on</label>
+      <div class="days" id="days">
+        <button class="day" data-d="1" aria-pressed="true">Mon</button>
+        <button class="day" data-d="2" aria-pressed="true">Tue</button>
+        <button class="day" data-d="3" aria-pressed="true">Wed</button>
+        <button class="day" data-d="4" aria-pressed="true">Thu</button>
+        <button class="day" data-d="5" aria-pressed="true">Fri</button>
+        <button class="day" data-d="6" aria-pressed="false">Sat</button>
+        <button class="day" data-d="0" aria-pressed="false">Sun</button>
+      </div>
+      <div class="two" style="margin-top:6px">
+        <div><label class="label" for="start">Starting</label><div class="row plain"><input type="date" id="start"></div></div>
+        <div><label class="label" for="end">Until</label><div class="row plain"><input type="date" id="end"></div></div>
+      </div>
+    </div>
+
+    <div class="two">
+      <div id="amTimeBox"><label class="label" for="timeAm" id="timeAmLabel">Pick-up time</label><div class="row plain"><input type="time" id="timeAm" value="08:00"></div></div>
+      <div id="pmTimeBox" class="hidden"><label class="label" for="timePm">Afternoon pick-up time</label><div class="row plain"><input type="time" id="timePm" value="15:15"></div></div>
+    </div>
+
+    <button class="btn" id="quoteBtn" type="button">See prices</button>
+    <div class="msg hidden" id="quoteMsg" role="alert"></div>
+  </section>
+
+  <!-- ===== RESULT ===== -->
+  <section id="result" class="result hidden">
+    <div class="sub" style="margin:0 0 8px" id="resultKicker">Estimated price</div>
+    <div class="price" id="priceBig">£0</div>
+    <div class="sub" id="priceSub"></div>
+    <div id="runs"></div>
+    <p class="fine" id="fineprint"></p>
+
+    <h2 style="margin-top:34px">Your details</h2>
+    <div class="row plain"><input id="name" type="text" placeholder="Full name" autocomplete="name"></div>
+    <div class="row plain"><input id="phone" type="tel" placeholder="Mobile number" autocomplete="tel"></div>
+    <div class="row plain"><input id="email" type="email" placeholder="Email address" autocomplete="email"></div>
+    <div class="row plain">
+      <select id="pax" aria-label="Passengers">
+        <option value="1">1 passenger</option><option value="2">2 passengers</option><option value="3">3 passengers</option>
+        <option value="4">4 passengers</option><option value="5">5 passengers</option><option value="6">6 passengers</option>
+      </select>
+    </div>
+    <div class="row plain"><textarea id="notes" placeholder="Notes (child’s name, door code, luggage, etc.)"></textarea></div>
+
+    <button class="btn block" id="bookBtn" type="button">Request booking</button>
+    <button class="btn block ghost hidden" id="waBtn" type="button">Send via WhatsApp instead</button>
+    <div class="msg hidden" id="bookMsg" role="alert"></div>
+    <p class="fine">This is a booking request. You’ll receive confirmation once it’s been accepted. Prices are estimates based on typical road conditions.</p>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   SETTINGS — edit these
+   ===================================================================== */
+const CONFIG = {
+  HOURLY_RATE: 20,            // £ per hour of the driver's time
+  WAIT_MINUTES: 5,            // wait at pick-up and again at drop-off
+  TRAFFIC_BUFFER: 1.15,       // multiplies driving time (1.15 = +15% for traffic, junctions, parking)
+  MIN_FARE: 8,                // minimum price per run (set 0 to disable)
+  ROUND_UP_TO: 0.5,           // round each run's price up to the nearest £0.50
+
+  DRIVER_POSTCODE: 'MK13 8DG',                 // driver's home — start and end of every run
+  DRIVER_COORDS: null,                          // optional override, e.g. {lat:52.05, lon:-0.78}
+
+  // How booking requests reach you (use one or more):
+  FORM_ENDPOINT: '',          // e.g. 'https://formspree.io/f/xxxxxxx'  (sends you an email, no mail app needed)
+  BOOKING_EMAIL: '',          // fallback: opens the customer's email app, pre-filled
+  WHATSAPP_NUMBER: '',        // international format, no + or spaces, e.g. '447700900123'
+
+  BIAS: { lat: 52.0406, lon: -0.7594 }          // search results are biased towards Milton Keynes
+};
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmtMoney = n => '£' + (Number.isInteger(n) ? n : n.toFixed(2));
+const fmtDur = m => { m = Math.round(m); const h = Math.floor(m/60), r = m%60; return h ? `${h}h ${String(r).padStart(2,'0')}m` : `${r} min`; };
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const DAYNAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const PC_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
+
+const state = { service:'taxi', freq:'once', mode:'am' };
+let driverPromise = null;
+let lastQuote = null;
+
+/* =====================================================================
+   ADDRESS SEARCH  (Photon / OpenStreetMap + postcodes.io — no API keys)
+   ===================================================================== */
+function labelFromPhoton(p){
+  const street = [p.housenumber, p.street].filter(Boolean).join(' ');
+  const parts = [];
+  if (p.name && p.name !== street) parts.push(p.name);
+  if (street) parts.push(street);
+  const area = p.district || p.locality || p.suburb;
+  if (area) parts.push(area);
+  const city = p.city || p.town || p.village || p.county;
+  if (city && city !== area) parts.push(city);
+  if (p.postcode) parts.push(p.postcode);
+  return [...new Set(parts)].join(', ');
+}
+
+function labelFromNominatim(r){
+  const a = r.address || {};
+  const street = [a.house_number, a.road].filter(Boolean).join(' ');
+  const parts = [];
+  if (r.name && r.name !== a.road && r.name !== street) parts.push(r.name);
+  if (street) parts.push(street);
+  const area = a.suburb || a.neighbourhood || a.hamlet;
+  if (area) parts.push(area);
+  const city = a.city || a.town || a.village || a.county;
+  if (city && city !== area) parts.push(city);
+  if (a.postcode) parts.push(a.postcode);
+  return [...new Set(parts)].join(', ') || (r.display_name || '').replace(/, United Kingdom$/,'');
+}
+
+async function searchPhoton(q){
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=10&lang=en&lat=${CONFIG.BIAS.lat}&lon=${CONFIG.BIAS.lon}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('photon');
+  const j = await r.json();
+  return j.features
+    .filter(f => f.properties.countrycode === 'GB')
+    .map(f => ({ label: labelFromPhoton(f.properties), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }))
+    .filter(x => x.label).slice(0, 6);
+}
+
+async function searchNominatim(q){
+  const b = 0.6; // roughly 40 miles around Milton Keynes, preferred not forced
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=gb&limit=6&viewbox=${CONFIG.BIAS.lon-b},${CONFIG.BIAS.lat+b/1.6},${CONFIG.BIAS.lon+b},${CONFIG.BIAS.lat-b/1.6}&q=${encodeURIComponent(q)}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('nominatim');
+  return (await r.json()).map(x => ({ label: labelFromNominatim(x), lat:+x.lat, lon:+x.lon })).filter(x => x.label);
+}
+
+async function searchPostcodes(q){
+  const compact = q.replace(/\s+/g,'');
+  if (!/^[A-Z]{1,2}\d/i.test(compact) || compact.length < 3) return [];
+  const full = PC_RE.test(q.trim());
+  const r = await fetch(full
+    ? 'https://api.postcodes.io/postcodes/' + encodeURIComponent(compact)
+    : 'https://api.postcodes.io/postcodes?q=' + encodeURIComponent(compact) + '&limit=5');
+  if (!r.ok) return [];
+  const j = await r.json();
+  const list = full ? [j.result] : (j.result || []);
+  return list.filter(Boolean).map(p => ({
+    label: `${p.postcode}, ${[p.admin_ward, p.admin_district].filter(Boolean).join(', ')}`.replace(/, $/,''),
+    lat:p.latitude, lon:p.longitude }));
+}
+
+async function searchAddress(q){
+  let out = [], failures = 0;
+  try { out = await searchPostcodes(q); } catch(e){ failures++; }
+  if (out.length && PC_RE.test(q.trim())) return out;
+  try { out = out.concat(await searchPhoton(q)); } catch(e){ failures++; }
+  if (out.length < 2) {
+    try { out = out.concat(await searchNominatim(q)); } catch(e){ failures++; }
+  }
+  if (!out.length && failures >= 2) throw new Error('search');
+  const seen = new Set();
+  return out.filter(x => !seen.has(x.label) && seen.add(x.label)).slice(0, 6);
+}
+
+const ICON_PIN    = '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>';
+const ICON_LOCATE = '<svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.9 3A9 9 0 0 0 13 3.1V1h-2v2.1A9 9 0 0 0 3.1 11H1v2h2.1A9 9 0 0 0 11 20.9V23h2v-2.1a9 9 0 0 0 7.9-7.9H23v-2h-2.1ZM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg>';
+
+function makeRow(icon, title, subtitle, onPick, act){
+  const li = document.createElement('li');
+  if (act) li.className = 'act';
+  li.innerHTML = `<div class="si">${icon}</div><div class="tx"><b></b><span></span></div>`;
+  li.querySelector('b').textContent = title;
+  const s = li.querySelector('span');
+  if (subtitle) s.textContent = subtitle; else s.remove();
+  li.addEventListener('mousedown', e => { e.preventDefault(); onPick(); });
+  return li;
+}
+
+function makeField(input, list, opts = {}){
+  const f = { value:null, input };
+  let timer, seq = 0;
+  const render = (items, withAction) => {
+    list.innerHTML = '';
+    if (withAction && opts.onLocate)
+      list.appendChild(makeRow(ICON_LOCATE, 'Allow location access', 'It provides your pickup address',
+        () => { list.classList.add('hidden'); opts.onLocate(); }, true));
+    items.forEach(it => {
+      const [title, ...rest] = it.label.split(', ');
+      list.appendChild(makeRow(ICON_PIN, title, rest.join(', '), () => f.set(it)));
+    });
+    list.classList.toggle('hidden', !list.children.length);
+  };
+  const showState = text => {
+    list.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'state'; li.textContent = text;
+    list.appendChild(li); list.classList.remove('hidden');
+  };
+  f.set = it => { f.value = it; input.value = it.label; list.classList.add('hidden'); hideResult(); };
+  f.resolve = async () => {
+    if (f.value) return f.value;
+    const q = input.value.trim();
+    if (!q) return null;
+    const items = await searchAddress(q);
+    if (items[0]) { f.set(items[0]); return items[0]; }
+    return null;
+  };
+  input.addEventListener('input', () => {
+    f.value = null; hideResult(); clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 3) { seq++; render([], true); return; }
+    const my = ++seq;
+    showState('Searching…');
+    timer = setTimeout(async () => {
+      try {
+        const items = await searchAddress(q);
+        if (my !== seq) return;
+        if (items.length) render(items); else showState('No matches — try adding the postcode');
+      } catch(e){ if (my === seq) showState('Couldn’t reach address search — check your connection'); }
+    }, 300);
+  });
+  input.addEventListener('blur', () => setTimeout(() => list.classList.add('hidden'), 150));
+  const open = () => { if (input.value.trim().length < 3) render([], true); };
+  input.addEventListener('focus', open);
+  input.addEventListener('click', open);
+  return f;
+}
+
+const fromF = makeField($('#fromInput'), $('#fromList'), { onLocate: () => locate() });
+const toF   = makeField($('#toInput'),   $('#toList'));
+
+function showGeoMsg(html){ const m = $('#geoMsg'); m.innerHTML = html; m.classList.remove('hidden'); }
+function locate(){
+  const geoMsg = $('#geoMsg'); geoMsg.classList.add('hidden');
+  const inFrame = window.self !== window.top;
+  const openLink = `<a href="${location.href}" target="_blank" rel="noopener" style="color:inherit">open this page in its own tab</a>`;
+
+  if (!navigator.geolocation || !window.isSecureContext)
+    return showGeoMsg('Location isn’t available here — please type the address.');
+
+  const btn = $('#geoBtn'); btn.style.opacity = '.4'; btn.disabled = true;
+  const done = () => { btn.style.opacity = ''; btn.disabled = false; };
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const { latitude:lat, longitude:lon } = pos.coords;
+      let label = 'My location';
+      try {
+        const r = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}&lang=en`);
+        const p = (await r.json()).features?.[0]?.properties;
+        if (p) label = labelFromPhoton(p) || label;
+      } catch(e){}
+      fromF.set({ label, lat, lon });
+    } finally { done(); }
+  }, err => {
+    done();
+    if (err.code === 1) {
+      showGeoMsg(inFrame
+        ? `This embedded page isn’t allowed to ask for your location. Please type the address, or ${openLink}.`
+        : 'Location access is blocked. Allow it in your browser’s address bar, or type the address instead.');
+    } else if (err.code === 3) showGeoMsg('Finding your location took too long — please type the address.');
+    else showGeoMsg('Couldn’t work out your location — please type the address.');
+  }, { enableHighAccuracy:false, timeout:12000, maximumAge:60000 });
+}
+$('#geoBtn').addEventListener('click', locate);
+
+/* =====================================================================
+   ROUTING  (OSRM public server)
+   ===================================================================== */
+function getDriver(){
+  if (driverPromise) return driverPromise;
+  driverPromise = (async () => {
+    if (CONFIG.DRIVER_COORDS) return CONFIG.DRIVER_COORDS;
+    const r = await fetch('https://api.postcodes.io/postcodes/' + encodeURIComponent(CONFIG.DRIVER_POSTCODE.replace(/\s+/g,'')));
+    if (!r.ok) throw new Error('driver');
+    const j = (await r.json()).result;
+    return { lat:j.latitude, lon:j.longitude };
+  })();
+  driverPromise.catch(() => driverPromise = null);
+  return driverPromise;
+}
+
+async function routeLegs(points){
+  const coords = points.map(p => `${p.lon},${p.lat}`).join(';');
+  const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`);
+  if (!r.ok) throw new Error('route');
+  const j = await r.json();
+  if (j.code !== 'Ok') throw new Error('route');
+  return j.routes[0].legs.map(l => l.duration / 60);   // minutes
+}
+
+function priceFor(minutes){
+  let p = minutes / 60 * CONFIG.HOURLY_RATE;
+  p = Math.ceil(p / CONFIG.ROUND_UP_TO - 1e-9) * CONFIG.ROUND_UP_TO;
+  return Math.max(p, CONFIG.MIN_FARE);
+}
+
+/* One "run": driver home → pick-up → wait → drop-off → wait → back to driver home */
+async function computeRun(name, pickup, drop, driver){
+  const [a, b, c] = await routeLegs([driver, pickup, drop, driver]);
+  const k = CONFIG.TRAFFIC_BUFFER, w = CONFIG.WAIT_MINUTES;
+  const legs = [
+    { label:'Driver’s home → pick-up', min:a*k },
+    { label:'Wait at pick-up',          min:w, wait:true },
+    { label:'Pick-up → drop-off',       min:b*k },
+    { label:'Wait at drop-off',         min:w, wait:true },
+    { label:'Drop-off → driver’s home', min:c*k }
+  ];
+  const total = legs.reduce((s,l) => s + l.min, 0);
+  return { name, legs, total, price: priceFor(total) };
+}
+
+/* =====================================================================
+   UI STATE
+   ===================================================================== */
+function applyUI(){
+  const school = state.service === 'school';
+  const recurring = state.freq === 'recurring';
+  $('#fromInput').placeholder = school ? 'Home address' : 'Pick-up location';
+  $('#toInput').placeholder   = school ? 'School address' : 'Drop-off location';
+  $('#fromInput').setAttribute('aria-label', $('#fromInput').placeholder);
+  $('#toInput').setAttribute('aria-label',   $('#toInput').placeholder);
+  $('#modePills').classList.toggle('hidden', !school);
+  $('#onceBox').classList.toggle('hidden', recurring);
+  $('#recurBox').classList.toggle('hidden', !recurring);
+  const showAm = !school || state.mode !== 'pm';
+  const showPm = school && state.mode !== 'am';
+  $('#amTimeBox').classList.toggle('hidden', !showAm);
+  $('#pmTimeBox').classList.toggle('hidden', !showPm);
+  $('#timeAmLabel').textContent = school ? 'Morning pick-up time (from home)' : 'Pick-up time';
+  $('#geoBtn').classList.toggle('hidden', false);
+  hideResult();
+}
+
+function bindPills(sel, key, attr){
+  $$(sel + ' .pill').forEach(btn => btn.addEventListener('click', () => {
+    state[key] = btn.dataset[attr];
+    $$(sel + ' .pill').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    applyUI();
+  }));
+}
+bindPills('#servicePills', 'service', 'service');
+bindPills('#freqPills',    'freq',    'freq');
+bindPills('#modePills',    'mode',    'mode');
+
+$$('.day').forEach(b => b.addEventListener('click', () => {
+  b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); hideResult();
+}));
+['date','start','end','timeAm','timePm'].forEach(id => $('#'+id).addEventListener('input', hideResult));
+
+// sensible date defaults
+(function(){
+  const t = new Date(); const tom = new Date(t.getTime() + 864e5);
+  const later = new Date(tom.getTime() + 28*864e5);
+  ['date','start','end'].forEach(id => $('#'+id).min = iso(t));
+  $('#date').value = iso(tom); $('#start').value = iso(tom); $('#end').value = iso(later);
+})();
+
+function hideResult(){ $('#result').classList.add('hidden'); lastQuote = null; $('#quoteMsg').classList.add('hidden'); }
+function showQuoteMsg(t){ const m = $('#quoteMsg'); m.textContent = t; m.classList.remove('hidden'); }
+
+function selectedDays(){ return $$('.day').filter(b => b.getAttribute('aria-pressed') === 'true').map(b => +b.dataset.d); }
+function countOccurrences(startStr, endStr, days){
+  const s = new Date(startStr + 'T12:00:00'), e = new Date(endStr + 'T12:00:00');
+  let n = 0;
+  for (let d = new Date(s), i = 0; d <= e && i < 400; d.setDate(d.getDate()+1), i++) if (days.includes(d.getDay())) n++;
+  return n;
+}
+const longDate = s => new Date(s + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+/* =====================================================================
+   QUOTE
+   ===================================================================== */
+$('#quoteBtn').addEventListener('click', async () => {
+  const btn = $('#quoteBtn');
+  hideResult();
+  const school = state.service === 'school', recurring = state.freq === 'recurring';
+
+  // validate schedule
+  if (!$('#fromInput').value.trim() || !$('#toInput').value.trim())
+    return showQuoteMsg(school ? 'Please enter the home and school addresses.' : 'Please enter pick-up and drop-off locations.');
+  if (recurring) {
+    if (!selectedDays().length) return showQuoteMsg('Pick at least one day to repeat on.');
+    if (!$('#start').value || !$('#end').value || $('#end').value < $('#start').value) return showQuoteMsg('Please choose a valid start and end date.');
+  } else if (!$('#date').value) return showQuoteMsg('Please choose a date.');
+
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Calculating…';
+  try {
+    const [from, to, driver] = await Promise.all([fromF.resolve(), toF.resolve(), getDriver()]);
+    if (!from || !to) throw new Error('addr');
+
+    const runs = [];
+    if (!school) runs.push(await computeRun('Journey', from, to, driver));
+    else {
+      if (state.mode !== 'pm')  runs.push(await computeRun('Morning drop-off',   from, to,   driver));
+      if (state.mode !== 'am')  runs.push(await computeRun('Afternoon pick-up',  to,   from, driver));
+    }
+
+    const perDay = runs.reduce((s,r) => s + r.price, 0);
+    let occurrences = 1, total = perDay;
+    if (recurring) {
+      occurrences = countOccurrences($('#start').value, $('#end').value, selectedDays());
+      if (!occurrences) throw new Error('none');
+      total = perDay * occurrences;
+    }
+    lastQuote = { runs, perDay, occurrences, total, from, to, school, recurring };
+    renderResult();
+  } catch (e) {
+    showQuoteMsg(e.message === 'addr' ? 'We couldn’t find one of those addresses — try adding the postcode.'
+      : e.message === 'none' ? 'No journeys fall on those days between the dates you chose.'
+      : 'Sorry, we couldn’t calculate that just now. Please check the addresses and try again.');
+  } finally { btn.disabled = false; btn.textContent = 'See prices'; }
+});
+
+function renderResult(){
+  const q = lastQuote;
+  $('#priceBig').textContent = fmtMoney(q.total);
+  if (q.recurring) {
+    const days = selectedDays().sort((a,b) => ((a+6)%7)-((b+6)%7)).map(d => DAYNAMES[d]).join(', ');
+    $('#resultKicker').textContent = 'Estimated total';
+    $('#priceSub').innerHTML = `${fmtMoney(q.perDay)} per day × ${q.occurrences} day${q.occurrences>1?'s':''}<br>${days} · ${longDate($('#start').value)} to ${longDate($('#end').value)}`;
+  } else {
+    $('#resultKicker').textContent = 'Estimated price';
+    $('#priceSub').textContent = q.runs.length > 1 ? `${fmtMoney(q.runs[0].price)} + ${fmtMoney(q.runs[1].price)} · ${longDate($('#date').value)}` : longDate($('#date').value);
+  }
+  $('#runs').innerHTML = q.runs.map(r => `
+    <div class="run">
+      <h3><span>${r.name}</span><span>${fmtMoney(r.price)}</span></h3>
+      ${r.legs.map(l => `<div class="leg"><span>${l.label}</span><span>${fmtDur(l.min)}</span></div>`).join('')}
+      <div class="leg tot"><span>Total driver time</span><span>${fmtDur(r.total)}</span></div>
+    </div>`).join('');
+  $('#fineprint').textContent =
+    `Priced at ${fmtMoney(CONFIG.HOURLY_RATE)} per hour of the driver’s time, from the moment they leave home until they return.`;
+  $('#waBtn').classList.toggle('hidden', !CONFIG.WHATSAPP_NUMBER);
+  $('#result').classList.remove('hidden');
+  $('#result').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* =====================================================================
+   BOOKING
+   ===================================================================== */
+function bookingText(){
+  const q = lastQuote;
+  const L = [];
+  L.push(`${q.school ? 'SCHOOL RUN' : 'TAXI'} BOOKING REQUEST${q.recurring ? ' (RECURRING)' : ''}`);
+  L.push('');
+  L.push(`${q.school ? 'Home' : 'Pick-up'}: ${q.from.label}`);
+  L.push(`${q.school ? 'School' : 'Drop-off'}: ${q.to.label}`);
+  if (q.school) L.push(`Service: ${{am:'Morning drop-off', pm:'Afternoon pick-up', both:'Morning drop-off + afternoon pick-up'}[state.mode]}`);
+  if (q.recurring) {
+    L.push(`Repeats: ${selectedDays().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(d=>DAYNAMES[d]).join(', ')}`);
+    L.push(`From ${longDate($('#start').value)} until ${longDate($('#end').value)} (${q.occurrences} days)`);
+  } else L.push(`Date: ${longDate($('#date').value)}`);
+  if (!q.school || state.mode !== 'pm') L.push(`${q.school ? 'Morning pick-up time' : 'Pick-up time'}: ${$('#timeAm').value}`);
+  if (q.school && state.mode !== 'am') L.push(`Afternoon pick-up time: ${$('#timePm').value}`);
+  L.push(`Passengers: ${$('#pax').value}`);
+  L.push('');
+  L.push(`Estimated price: ${fmtMoney(q.total)}${q.recurring ? ` (${fmtMoney(q.perDay)} per day × ${q.occurrences})` : ''}`);
+  L.push('');
+  L.push(`Name: ${$('#name').value}`);
+  L.push(`Phone: ${$('#phone').value}`);
+  L.push(`Email: ${$('#email').value}`);
+  if ($('#notes').value.trim()) L.push(`Notes: ${$('#notes').value.trim()}`);
+  return L.join('\n');
+}
+
+function validDetails(){
+  const m = $('#bookMsg'); m.classList.remove('ok');
+  if (!$('#name').value.trim() || !$('#phone').value.trim() || !$('#email').value.trim()) {
+    m.textContent = 'Please add your name, mobile number and email.'; m.classList.remove('hidden'); return false;
+  }
+  if ((!CONFIG.FORM_ENDPOINT && !CONFIG.BOOKING_EMAIL && !CONFIG.WHATSAPP_NUMBER)) {
+    m.textContent = 'Booking isn’t switched on yet — the site owner needs to add an email, form endpoint or WhatsApp number in the settings.';
+    m.classList.remove('hidden'); return false;
+  }
+  m.classList.add('hidden'); return true;
+}
+
+$('#bookBtn').addEventListener('click', async () => {
+  if (!lastQuote || !validDetails()) return;
+  const m = $('#bookMsg'), text = bookingText();
+  if (CONFIG.FORM_ENDPOINT) {
+    const btn = $('#bookBtn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Sending…';
+    try {
+      const r = await fetch(CONFIG.FORM_ENDPOINT, {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+        body: JSON.stringify({ name:$('#name').value, email:$('#email').value, phone:$('#phone').value, message:text })
+      });
+      if (!r.ok) throw 0;
+      m.textContent = 'Request sent — we’ll be in touch shortly to confirm.'; m.classList.add('ok'); m.classList.remove('hidden');
+    } catch(e){ m.classList.remove('ok'); m.textContent = 'Sorry, that didn’t send. Please try again or use WhatsApp.'; m.classList.remove('hidden'); }
+    btn.disabled = false; btn.textContent = 'Request booking';
+  } else if (CONFIG.BOOKING_EMAIL) {
+    location.href = `mailto:${CONFIG.BOOKING_EMAIL}?subject=${encodeURIComponent((lastQuote.school ? 'School run' : 'Taxi') + ' booking request')}&body=${encodeURIComponent(text)}`;
+  } else if (CONFIG.WHATSAPP_NUMBER) sendWhatsApp(text);
+});
+$('#waBtn').addEventListener('click', () => { if (lastQuote && validDetails()) sendWhatsApp(bookingText()); });
+function sendWhatsApp(text){ window.open(`https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank', 'noopener'); }
+
+applyUI();
+</script>
+</body>
+</html>
